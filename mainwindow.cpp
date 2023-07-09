@@ -44,6 +44,7 @@ int cant_datos = 0;
 string* new_data = new string[4];
 string data;
 int columnas = 4;
+string* atributos = new string [columnas]; // atributos de cada bloque
 
 int ind=0;
 int size_qdata =4 ;
@@ -160,16 +161,23 @@ void MainWindow::on_loadbtn_clicked()
     int count = 0;
     string item;
     int cantidad_registros = 10; //registros por bloque
+    string* values = new string[columnas*cantidad_registros]; // columnas = 4 (datos)
+    int j=0;
     while (!in.atEnd()){
         QString line = in.readLine();
         words = line.split(',');
         if(count==0){
         attr=words;
+
+        for(int i=0; i<4;i++){
+            atributos[i]=attr[i].toStdString();
+        }
+        cadena_bloques->set_atributos(atributos,4);
         count++;
         }
 
         else if(words.size()==4 || count>0 ){
-            int j=0;
+
 
             words1.append(words.at(0));                         //First element
             string1->insert(words.at(0).toStdString(),count-1); // hash
@@ -200,17 +208,23 @@ void MainWindow::on_loadbtn_clicked()
             fecha->insert(date,count-1);
             values[j++] = words.at(3).toStdString(); //values.push_back(item);
 
-            count++;
-            cadena_bloques->insert(values,j);
-        }
-    }
-    file.close();
-    string *atributos = new string[4];
+            if (j==columnas*cantidad_registros){
 
-    for(int i=0; i<4;i++){
-        atributos[i]=attr[i].toStdString();
+                cadena_bloques->insert(values,j);
+                j =0;
+                count++;
+            }
+        }
+
     }
-    cadena_bloques->set_atributos(atributos,4);
+    if(j!=0){
+        cadena_bloques->insert(values,j); // se inserta en el bloque
+    }
+    delete [] values;
+    file.close();
+    //string *atributos = new string[4];
+
+
 
 
     ui->comboBox->setHidden(0);
