@@ -3,6 +3,10 @@
 
 ## Resumen
 Esta aplicación Qt fue desarrollada como un proyecto para una clase de Estructuras de Datos y Algoritmos. La aplicación muestra varias estructuras de datos y algoritmos mediante una interfaz gráfica fácil de usar. Permite a los usuarios interactuar y visualizar las operaciones de diferentes estructuras de datos, así como los algoritmos implementados en ellas.
+## 🔗 Links
+[![portfolio](https://img.shields.io/badge/my_portfolio-000?style=for-the-badge&logo=ko-fi&logoColor=white)](https://katherineoelsner.com/)
+[![linkedin](https://img.shields.io/badge/linkedin-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/)
+[![twitter](https://img.shields.io/badge/twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/)
 
 ## Características
 La aplicación ofrece las siguientes características:
