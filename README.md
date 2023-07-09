@@ -3,11 +3,8 @@
 
 ## Resumen
 Esta aplicación Qt fue desarrollada como un proyecto para una clase de Estructuras de Datos y Algoritmos. La aplicación muestra varias estructuras de datos y algoritmos mediante una interfaz gráfica fácil de usar. Permite a los usuarios interactuar y visualizar las operaciones de diferentes estructuras de datos, así como los algoritmos implementados en ellas.
-## 🔗 Links
-
-[![github](https://img.shields.io/badge/github-0a0a0a?style=for-the-badge&logo=github&logoColor=white)](https://github.com/manyorycuevamendoza/BlockChain))
-
-[![twitter](https://img.shields.io/badge/twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)](https://twitter.com/)
+# 🔗 Repo del proyecto.
+[![github](https://img.shields.io/badge/github-0a0a0a?style=for-the-badge&logo=github&logoColor=white)](https://github.com/manyorycuevamendoza/BlockChain)
 
 ## Características
 La aplicación ofrece las siguientes características:
