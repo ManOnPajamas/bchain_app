@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "avl.h"
 #include "blockchain.h"
+#include "boyer_moree.h"
 #include "date.h"
 #include "patricia_trie.h"
 #include "ui_mainwindow.h"
@@ -8,6 +9,9 @@
 #include <QFileDialog>
 #include <QString>
 #include <QStringList>
+
+#include <QApplication>
+#include <QStyleFactory>
 
 #include <iostream>
 #include <QDebug>
@@ -33,8 +37,13 @@ ChainHash<string,int>* string2 = new ChainHash<string,int>(); //segundo string
 ChainHash<int,int>* numero = new ChainHash<int,int>(); //para monto id/monto
 ChainHash<long,int>* fecha = new ChainHash<long,int>(); //para fecha/id>
 
+
 TriePatricia<int>* inicia_string1 = new TriePatricia<int>();
 TriePatricia<int>* inicia_string2 = new TriePatricia<int>();
+
+//boyer (2: strings)
+string Patrones_string1; // Clientes
+string Patrones_string2; // Lugares
 
 QStringList attr;
 string *values = new string[4];
@@ -54,7 +63,7 @@ int en=0;
 
 //int n1=0;
 
-string* del_datos(int nro_block){
+void del_datos(int nro_block){
     string* datos;
     int size_datos = cadena_bloques->get_block(datos,nro_block); // recibe todos los datos
 
@@ -85,6 +94,9 @@ string* del_datos(int nro_block){
 
         size_datos-=columnas; // eliminamos un registro por iteracion
     }
+    //eliminamos Clientes o Lugares de boyer, llamando a la funcion eliminarContenidoDespuesDelPunto
+    eliminarContenidoDespuesDelPunto(Patrones_string1, nro_block);
+    eliminarContenidoDespuesDelPunto(Patrones_string2, nro_block);
 }
 
 
@@ -102,6 +114,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->searchbtn->hide();
     ui->searchblckbtn->hide();
     ui->selectbtn->hide();
+    ui->delbtn->hide();
     ui->label->hide();
     ui->label_2->hide();
     ui->label_3->hide();
@@ -115,7 +128,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->lineEdit->hide();
     ui->label_5->hide();
 
-
+    //SIGNALS
     // Assuming you have a QPushButton pointer for button1 and button2
     // and assuming the function is inside a QObject-derived class
 
@@ -125,6 +138,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Connect button2's clicked signal to the same function
     QObject::connect(ui->donebtn, &QPushButton::clicked, this, &MainWindow::handleButtonClicked);
 
+    connect(ui->modeComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onModeComboBoxIndexChanged(int)));
+
 
 }
 
@@ -133,9 +148,34 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::onModeComboBoxIndexChanged(int index) {    //darkmode
+    if (index == 1) {  // Dark Mode
+        qApp->setStyle(QStyleFactory::create("Fusion"));
+        QPalette darkPalette;
+        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::WindowText, Qt::white);
+        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+        darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::PlaceholderText, Qt::red);
 
+        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
 
-void MainWindow::on_loadbtn_clicked()
+        qApp->setPalette(darkPalette);
+    } else if (index == 0) {  // Light Mode
+        qApp->setStyle(QStyleFactory::create("Fusion"));
+        qApp->setPalette(QApplication::style()->standardPalette());
+    }
+}
+
+void MainWindow::on_loadbtn_clicked()                       //LOAD file
 {
 
     QString fileName = QFileDialog::getOpenFileName(this, "Open the file");
@@ -159,6 +199,8 @@ void MainWindow::on_loadbtn_clicked()
     //QStringList attr;
     //int rowCount = 0;
     int count = 0;
+    string bloque_client="";
+    string bloque_lugar="";
     string item;
     int cantidad_registros = 10; //registros por bloque
     string* values = new string[columnas*cantidad_registros]; // columnas = 4 (datos)
@@ -181,7 +223,7 @@ void MainWindow::on_loadbtn_clicked()
 
             words1.append(words.at(0));                         //First element
             string1->insert(words.at(0).toStdString(),count-1); // hash
-                                                                 //boyer
+            bloque_client+=words.at(0).toLower().toStdString()+" ";                            //boyer
             inicia_string1->insert(count-1,words.at(0).toStdString()); //patricia
             values[j++] = words.at(0).toStdString(); //values.push_back(item);
 
@@ -190,6 +232,8 @@ void MainWindow::on_loadbtn_clicked()
             words2.append(words.at(1));
             string2->insert(words.at(1).toStdString(),count-1); // hash
             inicia_string2->insert(count-1,words.at(1).toStdString()); //patricia
+
+            bloque_lugar+=words.at(1).toLower().toStdString()+" "; //boyer
             values[j++] = words.at(1).toStdString(); //values.push_back(item);
 
             //-------------------------------------------------------------
@@ -211,6 +255,11 @@ void MainWindow::on_loadbtn_clicked()
             if (j==columnas*cantidad_registros){
 
                 cadena_bloques->insert(values,j);
+                //for( auto &item: bloque_client){item=tolower(item);}
+                Patrones_string1 += "." + bloque_client;//boyer
+                //for( auto &item: bloque_lugar){item=tolower(item);}
+                Patrones_string2 += "." + bloque_lugar;//boyer
+                bloque_client=bloque_lugar="";
                 j =0;
                 count++;
             }
@@ -245,27 +294,32 @@ void MainWindow::on_loadbtn_clicked()
     ui->comboBox->addItem("15. Buscar el patron "+ attr[1]);
     ui->comboBox->addItem("16. Recalculo en cascada");
     ui->comboBox->addItem("17. Modificar bloque");
+    ui->comboBox->addItem("18. Eliminar bloque");
     ui->selectbtn->show();
 
 }
 
-
-void MainWindow::on_dispbtn_clicked()
+void MainWindow::on_dispbtn_clicked()                       //DISPLAY
 {   ui->label->hide();
     ui->plainTextEdit_2->show();
     ui->label_2->hide();
     ui->label_3->hide();
     ui->label_4->hide();
+    ui->label_5->hide();
+    ui->plainTextEdit->show();
+    ui->plainTextEdit_2->hide();
     ui->plainTextEdit_3->hide();
     ui->plainTextEdit_4->hide();
     ui->plainTextEdit_5->hide();
     ui->plainTextEdit_6->hide();
-    ui->plainTextEdit->show();
-    ui->plainTextEdit_2->hide();
-    //ui->label->hide();
+
+    ui->lineEdit->hide();
     ui->addbtn->hide();
     ui->donebtn->hide();
     ui->searchbtn->hide();
+    ui->searchblckbtn->hide();
+    ui->delbtn->hide();
+
     // Call the void function
     cadena_bloques->display();
     // Retrieve the output generated by the void function
@@ -283,15 +337,16 @@ void MainWindow::on_dispbtn_clicked()
     ui->plainTextEdit->setPlainText(output);
 }
 
-
-void MainWindow::on_selectbtn_clicked()
+void MainWindow::on_selectbtn_clicked()                     //MENU select
 {
     ui->plainTextEdit_3->clear();
     ui->plainTextEdit_4->clear();
     ui->plainTextEdit_5->clear();
     ui->plainTextEdit_6->clear();
-    int index = ui->comboBox->currentIndex();
 
+    ui->delbtn->hide();
+    int index = ui->comboBox->currentIndex();
+    en=0;
     if(index == 0){         //agregar registro
         ui->label_5->hide();
         ui->lineEdit->hide();
@@ -589,7 +644,7 @@ void MainWindow::on_selectbtn_clicked()
         ui->plainTextEdit_2->hide();
         ui->label->show();
         ui->label_2->hide();
-        ui->label_3->show();
+        ui->label_3->hide();
         ui->label_4->hide();
         ui->plainTextEdit_3->show();
         ui->plainTextEdit_4->hide();
@@ -626,7 +681,7 @@ void MainWindow::on_selectbtn_clicked()
         ui->label->setText("Inicia con #" +attr[1]);
     }
 
-    if(index == 13){         //buscar patron Monto
+    if(index == 13){         //Booyer buscar patron Monto
         ui->label_5->hide();
         ui->lineEdit->hide();
         ui->searchblckbtn->hide();
@@ -638,6 +693,7 @@ void MainWindow::on_selectbtn_clicked()
         ui->label_2->hide();
         ui->label_3->hide();
         ui->label_4->hide();
+        ui->plainTextEdit_3->setPlaceholderText("El patron debe ser mayor a 1 caracter");
         ui->plainTextEdit_3->show();
         ui->plainTextEdit_4->hide();
         ui->plainTextEdit_5->hide();
@@ -645,10 +701,10 @@ void MainWindow::on_selectbtn_clicked()
         ui->searchbtn->show();
         ui->horizontalLayoutWidget->show();
         ui->horizontalLayoutWidget_2->show();
-        ui->label->setText("Buscar Patron " +attr[0]);
+        ui->label->setText("Patron " +attr[0]);
     }
 
-    if(index == 14){         //buscar patron Lugar
+    if(index == 14){         //Booyer buscar patron Lugar
         ui->label_5->hide();
         ui->lineEdit->hide();
         ui->searchblckbtn->hide();
@@ -667,7 +723,7 @@ void MainWindow::on_selectbtn_clicked()
         ui->searchbtn->show();
         ui->horizontalLayoutWidget->show();
         ui->horizontalLayoutWidget_2->show();
-        ui->label->setText("Buscar Patron " +attr[1]);
+        ui->label->setText("Patron " +attr[1]);
     }
 
     if(index == 15){         //Recalculo
@@ -692,6 +748,7 @@ void MainWindow::on_selectbtn_clicked()
     }
 
     if(index == 16){         //Modificar bloque
+
         ui->label_5->show();
         ui->lineEdit->show();
         ui->plainTextEdit->hide();
@@ -715,18 +772,44 @@ void MainWindow::on_selectbtn_clicked()
         //ui->addbtn->show();
         //ui->donebtn->show();
         en=1;
+    }
 
+    if(index == 17){         //Modificar bloque
+        //ui->label_5->setText("Eliminar bloque:");
+        ui->label_5->show();
+        ui->lineEdit->show();
+        ui->plainTextEdit->hide();
+        ui->plainTextEdit_2->hide();
+        ui->searchbtn->hide();
+        ui->searchblckbtn->hide();
+        ui->label->hide();
+        ui->label_2->hide();
+        ui->label_3->hide();
+        ui->label_4->hide();
+        ui->plainTextEdit_3->hide();
+
+        ui->plainTextEdit_4->hide();
+        ui->plainTextEdit_4->setPlaceholderText("");
+        ui->plainTextEdit_5->hide();
+        ui->plainTextEdit_6->hide();
+        ui->delbtn->show();
+        //ui->label->setText("Ingresar "+attr[0]);
+        //ui->label_2->setText("Ingresar "+attr[1]);
+        //ui->label_3->setText("Ingresar "+attr[2]);
+        //ui->label_4->setText("Ingresar "+attr[3]);
+        //ui->addbtn->show();
+        //ui->donebtn->show();
+        en=2;
     }
 }
 
-
-void MainWindow::on_clearbtn_clicked()
+void MainWindow::on_clearbtn_clicked()                      //CLEAR display
 {
     ui->plainTextEdit->clear();
     //ui->plainTextEdit->hide();
 }
 
-void MainWindow::on_searchbtn_clicked()
+void MainWindow::on_searchbtn_clicked()                     //SEARCH action
 {
     CircularArray<int> res;
 
@@ -738,6 +821,7 @@ void MainWindow::on_searchbtn_clicked()
     string sattr2 = qattr2.toStdString();
 
     time_t c1, c2;
+    string patron;
     if(index==1){
 
         ui->plainTextEdit_2->show();
@@ -1023,29 +1107,34 @@ void MainWindow::on_searchbtn_clicked()
 
         inicia_string1->start_with(res, data);
 
-
-
-
-        //// Retrieve the output generated by the void function
-        std::stringstream buffer;
-        std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
-
         if (int(res.size())==0){
+            //// Retrieve the output generated by the void function
+            std::stringstream buffer;
+            std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
             cout<<"No existen cadenas que inicien con "<<data<<endl;
+            std::cout.rdbuf(oldCoutBuffer);
+
+            //// Convert the output to QString
+            QString output = QString::fromStdString(buffer.str());
+
+            //// Display the output in the QPlainTextEdit widget
+            ui->plainTextEdit_2->setPlainText(output);
         }
         else{
+            //// Retrieve the output generated by the void function
+            std::stringstream buffer;
+            std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
           for (int i=0; i<int(res.size()); i++){
           cadena_bloques->get_block(res[i]);
           }
+          std::cout.rdbuf(oldCoutBuffer);
+
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
+
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
         }
-
-        std::cout.rdbuf(oldCoutBuffer);
-
-        //// Convert the output to QString
-        QString output = QString::fromStdString(buffer.str());
-
-        //// Display the output in the QPlainTextEdit widget
-        ui->plainTextEdit_2->setPlainText(output);
     }
 
     if(index==12){          //Patricia Lugar
@@ -1057,101 +1146,136 @@ void MainWindow::on_searchbtn_clicked()
 
         inicia_string2->start_with(res, data);
 
-
-
-
-        //// Retrieve the output generated by the void function
-        std::stringstream buffer;
-        std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
-
         if (int(res.size())==0){
+          //// Retrieve the output generated by the void function
+          std::stringstream buffer;
+          std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
           cout<<"No existen cadenas que inicien con "<<data<<endl;
+          std::cout.rdbuf(oldCoutBuffer);
+
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
+
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
         }
         else{
+          //// Retrieve the output generated by the void function
+          std::stringstream buffer;
+          std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
           for (int i=0; i<int(res.size()); i++){
           cadena_bloques->get_block(res[i]);
           }
+          std::cout.rdbuf(oldCoutBuffer);
+
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
+
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
         }
 
-        std::cout.rdbuf(oldCoutBuffer);
-
-        //// Convert the output to QString
-        QString output = QString::fromStdString(buffer.str());
-
-        //// Display the output in the QPlainTextEdit widget
-        ui->plainTextEdit_2->setPlainText(output);
     }
 
     if(index==13){          //Patron Nombre
         ui->plainTextEdit_2->show();
 
-        //QString formato = "dd-mm-aaaa";
-        //ui->plainTextEdit_2->setPlaceholderText(formato);
+        QString nom=ui->plainTextEdit_3->toPlainText();
+        patron= nom.toStdString();
+        if(patron.size()<2){
+          ui->plainTextEdit_3->clear();
+          ui->plainTextEdit_3->setPlaceholderText("El patron debe ser mayor a 1 caracter");
+
+        }
+        else{
+          BuscarPatron(Patrones_string1, patron, res);
 
 
 
+          if (int(res.size())==0){
+          //// Retrieve the output generated by the void function
+          std::stringstream buffer;
+          std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+          cout<<"No existen cadenas que inicien con "<<qdata<<endl;
+          std::cout.rdbuf(oldCoutBuffer);
 
-        //// Retrieve the output generated by the void function
-        std::stringstream buffer;
-        std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
 
-        cadena_bloques->get_block(avl2->maxValue());
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
+          }
+          else{
+          //// Retrieve the output generated by the void function
+          std::stringstream buffer;
+          std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+          for (int i=0; i<int(res.size()); i++){
+              cadena_bloques->get_block(res[i]);
+          }
+          std::cout.rdbuf(oldCoutBuffer);
 
-        std::cout.rdbuf(oldCoutBuffer);
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
 
-        //// Convert the output to QString
-        QString output = QString::fromStdString(buffer.str());
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
+          }
 
-        //// Display the output in the QPlainTextEdit widget
-        ui->plainTextEdit_2->setPlainText(output);
+
+        }
     }
 
     if(index==14){          //Patron lugar
         ui->plainTextEdit_2->show();
 
-        //QString formato = "dd-mm-aaaa";
-        //ui->plainTextEdit_2->setPlaceholderText(formato);
+        QString nom=ui->plainTextEdit_3->toPlainText();
+        patron= nom.toStdString();
+        if(patron.size()<2){
+          ui->plainTextEdit_3->clear();
+          ui->plainTextEdit_3->setPlaceholderText("El patron debe ser mayor a 1 caracter");
+
+        }
+        else{
+          BuscarPatron(Patrones_string2, patron, res);
 
 
 
+          if (int(res.size())==0){
+          //// Retrieve the output generated by the void function
+          std::stringstream buffer;
+          std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+          cout<<"No existen cadenas que inicien con "<<qdata<<endl;
+          std::cout.rdbuf(oldCoutBuffer);
 
-        //// Retrieve the output generated by the void function
-        std::stringstream buffer;
-        std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
 
-        cadena_bloques->get_block(avl2->maxValue());
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
+          }
+          else{
+          //// Retrieve the output generated by the void function
+          std::stringstream buffer;
+          std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+          for (int i=0; i<int(res.size()); i++){
+              cadena_bloques->get_block(res[i]);
+          }
+          std::cout.rdbuf(oldCoutBuffer);
 
-        std::cout.rdbuf(oldCoutBuffer);
+          //// Convert the output to QString
+          QString output = QString::fromStdString(buffer.str());
 
-        //// Convert the output to QString
-        QString output = QString::fromStdString(buffer.str());
+          //// Display the output in the QPlainTextEdit widget
+          ui->plainTextEdit_2->setPlainText(output);
+          }
 
-        //// Display the output in the QPlainTextEdit widget
-        ui->plainTextEdit_2->setPlainText(output);
+
+        }
     }
 
     if(index==15){          //Recalculo
-        //ui->plainTextEdit_2->show();
-
-        //QString formato = "dd-mm-aaaa";
-        //ui->plainTextEdit_2->setPlaceholderText(formato);
-
-
-        //cadena_bloques->recalculo_cascada();
-
-        //// Retrieve the output generated by the void function
-        //std::stringstream buffer;
-        //std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
 
         cadena_bloques->recalculo_cascada();
-
-        ////std::cout.rdbuf(oldCoutBuffer);
-
-        //////// Convert the output to QString
-        ////QString output = QString::fromStdString(buffer.str());
-
-        //////// Display the output in the QPlainTextEdit widget
-        ////ui->plainTextEdit_2->setPlainText(output);
     }
 
     if(index==16){          //Modificar bloque
@@ -1185,14 +1309,16 @@ void MainWindow::on_searchbtn_clicked()
     }
 }
 
-void MainWindow::handleButtonClicked()
+void MainWindow::handleButtonClicked()                      //ADD register (add & done button)
 {
     // Identify which button triggered the function
     QPushButton* senderButton = qobject_cast<QPushButton*>(sender());
     if(en==0){
+        string bloque_cliente;
+        string bloque_lugar;
         if(senderButton == ui->addbtn) {
 
-            string s1,s2;
+            string s1,s2,s1_l,s2_l;
             int s3;
             string s4;
             int size = cadena_bloques->get_size();
@@ -1213,13 +1339,17 @@ void MainWindow::handleButtonClicked()
 
             QString qs1 = ui->plainTextEdit_3->toPlainText();
             s1 = qs1.toStdString(); // string1
+            s1_l=qs1.toLower().toStdString();
             string1->insert(s1,size);
             inicia_string1->insert(size,s1);
+            bloque_cliente+=s1_l+" ";
 
             QString qs2 = ui->plainTextEdit_4->toPlainText();
             s2 = qs2.toStdString();  //string2
+            s2_l=qs2.toLower().toStdString();
             string2->insert(s2,size);
             inicia_string2->insert(size,s2);
+            bloque_lugar+=s2_l+" ";
 
             QString qs3 = ui->plainTextEdit_5->toPlainText();
             s3 = qs3.toInt(); // entero(monto)
@@ -1249,6 +1379,15 @@ void MainWindow::handleButtonClicked()
             }
         if(senderButton == ui->donebtn){
             cadena_bloques->insert(qdata,ind);
+            //for(auto &item: bloque_cliente){
+            //    item=tolower(item);
+            //}
+
+            //for(auto &item: bloque_lugar){
+            //    item=tolower(item);
+            //}
+            Patrones_string1+="."+bloque_cliente;
+            Patrones_string2+="."+bloque_lugar;
             //delete[] qdata;
             ind=1;
             cout<<"donebtn /t";
@@ -1334,7 +1473,7 @@ void MainWindow::handleButtonClicked()
     }
 }
 
-void MainWindow::on_searchblckbtn_clicked()
+void MainWindow::on_searchblckbtn_clicked()                 //Searchblock btn
 {
     bool ok;
     int n1 = ui->lineEdit->text().toInt(&ok);
@@ -1366,6 +1505,48 @@ void MainWindow::on_searchblckbtn_clicked()
         cadena_bloques->modificar_bloque(n1, new_data,cant_datos);
 
         delete [] new_data; cant_datos=0; new_data = nullptr;
+    }
+    else {
+
+        ui->plainTextEdit_3->hide();
+        ui->plainTextEdit_4->hide();
+        ui->plainTextEdit_5->hide();
+        ui->plainTextEdit_6->hide();
+        ui->label->hide();
+        ui->label_2->hide();
+        ui->label_3->hide();
+        ui->label_4->hide();
+        ui->addbtn->hide();
+        ui->donebtn->hide();
+
+        ui->plainTextEdit_2->show();
+
+        //// Retrieve the output generated by the void function
+        std::stringstream buffer;
+        std::streambuf* oldCoutBuffer = std::cout.rdbuf(buffer.rdbuf());
+
+
+        cout<<"Bloque no existe\n";
+        std::cout.rdbuf(oldCoutBuffer);
+
+        //// Convert the output to QString
+        QString output = QString::fromStdString(buffer.str());
+
+        //// Display the output in the QPlainTextEdit widget
+        ui->plainTextEdit_2->setPlainText(output);
+    }
+}
+
+
+void MainWindow::on_delbtn_clicked()
+{
+    bool ok;
+    int n1 = ui->lineEdit->text().toInt(&ok);
+    qDebug()<<n1;
+
+    if (cadena_bloques->exist_block(n1)){
+        del_datos(n1);// eliminar en avl, hash, patricia, boyer
+        cadena_bloques->remove_bloque(n1); // eliminamos el bloque
     }
     else {
 
