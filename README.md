@@ -22,7 +22,7 @@ Para utilizar la aplicación Qt, sigue estos pasos:
 
 1. **Clonar el Repositorio:** Clona este repositorio en tu máquina local usando el siguiente comando:
 ```
-git clone https://github.com/your-username/repo-name.git
+git clone https://github.com/ManOnPajamas/bchain_app/bchain_appG5.git
 ```
 
 2. **Compilar el Proyecto:** Abre el proyecto en Qt Creator y compílalo utilizando la configuración adecuada para tu sistema.
