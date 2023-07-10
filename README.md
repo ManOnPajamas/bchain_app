@@ -26,9 +26,9 @@ git clone --depth 1 --filter=tree:0 https://github.com/ManOnPajamas/bchain_app.g
 
 ```
 
-2. **Compilar el Proyecto:** Abre el proyecto en Qt Creator y compílalo utilizando la configuración adecuada para tu sistema.
+2. **Agregarlo a un folder en la memoria:** Crear y guardar en un folder los contenidos
 
-3. **Ejecutar la Aplicación:** Después de una compilación exitosa, ejecuta la aplicación desde Qt Creator o ejecutando el archivo binario generado.
+3. **Ejecutar la Aplicación:** Hacer click al archivo ejecutable "bchain_app.exe".
 
 ## Uso
 Una vez que la aplicación esté en ejecución, puedes seguir estas instrucciones para explorar su funcionalidad:
